@@ -1,12 +1,11 @@
-import path from "path";
-import os from "os";
 import express from "express";
 import multer from "multer";
 import cors from "cors";
 import fs from "fs";
-import path from "path";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import path from "path";
+import os from "os";
 
 dotenv.config();
 
@@ -17,16 +16,6 @@ app.use(express.json());
 app.get("/health", (req, res) => {
   console.log("GET /health hit");
   res.json({ ok: true });
-});
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname) || ".m4a";
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-  }
 });
 
 const uploadDir = path.join(os.tmpdir(), "scribeo-uploads");
