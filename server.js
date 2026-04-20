@@ -21,7 +21,17 @@ app.get("/health", (req, res) => {
 const uploadDir = path.join(os.tmpdir(), "scribeo-uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const upload = multer({ dest: uploadDir });
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".m4a";
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  }
+});
+
+const upload = multer({ storage });
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
