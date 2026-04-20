@@ -1,3 +1,5 @@
+import path from "path";
+import os from "os";
 import express from "express";
 import multer from "multer";
 import cors from "cors";
@@ -27,7 +29,10 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const uploadDir = path.join(os.tmpdir(), "scribeo-uploads");
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({ dest: uploadDir });
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -42,28 +47,38 @@ app.post("/transcribe", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    console.log("File received:", req.file.path);
-    console.log("Original name:", req.file.originalname);
-    console.log("MIME type:", req.file.mimetype);
-
-    console.time("Transcription time");
+    const filePath = req.file.path;
+    console.log("Uploaded file path:", filePath);
+    console.log("Original filename:", req.file.originalname);
+    console.log("Mime type:", req.file.mimetype);
+    console.log("File size:", req.file.size);
 
     const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(req.file.path),
+      file: fs.createReadStream(filePath),
       model: "gpt-4o-transcribe",
     });
 
-    console.timeEnd("Transcription time");
-    console.log("Transcription done");
+    console.log("Transcription completed");
+    console.log("Transcript preview:", transcription.text?.slice(0, 120) ?? "No text");
 
-    fs.unlinkSync(req.file.path);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
 
     res.json({
-      transcript: transcription.text,
+      transcript: transcription.text ?? "",
     });
   } catch (error) {
     console.error("Transcription error:", error);
-    res.status(500).json({ error: "Transcription failed" });
+
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      error: "Transcription failed",
+      details: error?.message ?? "Unknown error"
+    });
   }
 });
 
